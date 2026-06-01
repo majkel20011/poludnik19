@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Południk 19° — Galeria</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080d;--surface:#0f1018;--card:#13141f;--border:#1c1d2e;
+  --accent:#e8ff00;--accent2:#ff4060;--blue:#4db8ff;
+  --text:#dde0f0;--muted:#484a6a;
+  --font-d:'Bebas Neue',sans-serif;--font-m:'Space Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-m);min-height:100dvh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,255,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(232,255,0,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.nav-title{font-family:var(--font-d);font-size:28px;letter-spacing:3px;color:var(--accent)}
+.nav-sub{font-size:8px;letter-spacing:2px;color:var(--muted);display:block;margin-top:-2px}
+.tab-row{display:flex;gap:4px}
+.tab{padding:7px 14px;font-family:var(--font-m);font-size:9px;letter-spacing:2px;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:2px;transition:.2s}
+.tab.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,.06)}
+
+.page{display:none;position:relative;z-index:1}
+.page.active{display:block}
+
+/* METER */
+.meter-wrap{padding:20px 18px 40px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.status-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:2px;font-size:10px;letter-spacing:1px;color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:.3s}
+.dot.on{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse 2s infinite}
+.dot.err{background:var(--accent2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:22px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
+.lbl{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.dist-big{font-family:var(--font-d);font-size:76px;letter-spacing:2px;line-height:1;color:var(--accent);text-align:center;transition:.3s}
+.dist-big.far{color:var(--accent2)}
+.dist-unit{font-size:10px;letter-spacing:4px;color:var(--muted);text-align:center;margin-top:4px}
+.compass-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0 6px}
+.compass{position:relative;width:130px;height:130px}
+.c-ring{width:130px;height:130px;border-radius:50%;border:1px solid var(--border);position:absolute}
+.c-ring2{width:100px;height:100px;border-radius:50%;border:1px solid rgba(232,255,0,.08);position:absolute;top:15px;left:15px}
+.c-mline{position:absolute;left:50%;top:8px;bottom:8px;width:1px;background:repeating-linear-gradient(to bottom,rgba(232,255,0,.25) 0,rgba(232,255,0,.25) 3px,transparent 3px,transparent 7px);transform:translateX(-50%)}
+.card-n{position:absolute;font-size:8px;letter-spacing:1px;color:var(--muted);font-weight:700}
+.card-n.n{top:3px;left:50%;transform:translateX(-50%)}
+.card-n.s{bottom:3px;left:50%;transform:translateX(-50%)}
+.card-n.e{right:4px;top:50%;transform:translateY(-50%)}
+.card-n.w{left:4px;top:50%;transform:translateY(-50%)}
+.needle-w{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform .6s cubic-bezier(.34,1.56,.64,1)}
+.needle{width:4px;height:56px;display:flex;flex-direction:column;align-items:center}
+.n-head{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:20px solid var(--accent2);filter:drop-shadow(0 0 5px var(--accent2))}
+.n-tail{flex:1;width:2px;background:linear-gradient(to bottom,var(--accent2),rgba(232,255,0,.3))}
+.n-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);margin-top:-4px}
+.dir-text{font-family:var(--font-d);font-size:26px;letter-spacing:5px;text-align:center;transition:.3s}
+.dir-text.w{color:var(--blue)}.dir-text.e{color:var(--accent2)}.dir-text.ok{color:var(--accent)}
+.dir-deg{font-size:10px;color:var(--muted);letter-spacing:2px;text-align:center;margin-top:2px}
+.coords-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.coord-cell{background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:12px}
+.coord-val{font-size:13px;letter-spacing:1px}
+.btn{width:100%;padding:15px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--font-m);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:.2s;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:translateY(100%);transition:.2s;z-index:0}
+.btn:hover::before,.btn:active::before{transform:translateY(0)}
+.btn:hover,.btn:active{color:var(--bg)}
+.btn span{position:relative;z-index:1}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled::before{display:none}
+.info-box{padding:12px 14px;background:rgba(232,255,0,.03);border-left:2px solid rgba(232,255,0,.3);font-size:9px;line-height:1.9;color:var(--muted);letter-spacing:.5px}
+.info-box strong{color:var(--accent)}
+
+/* UPLOAD */
+.upload-wrap{padding:20px 18px 40px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.lock-banner{padding:14px 16px;background:rgba(255,64,96,.08);border:1px solid rgba(255,64,96,.3);border-radius:2px;font-size:10px;line-height:1.8;letter-spacing:.5px;color:var(--accent2);display:flex;gap:10px;align-items:flex-start}
+.lock-banner.unlocked{background:rgba(232,255,0,.06);border-color:rgba(232,255,0,.3);color:var(--accent)}
+.upload-zone{border:2px dashed var(--border);border-radius:2px;padding:36px 20px;text-align:center;cursor:pointer;transition:.3s;position:relative;overflow:hidden}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(232,255,0,.04)}
+.uz-icon{font-size:36px;margin-bottom:10px;display:block}
+.uz-title{font-family:var(--font-d);font-size:22px;letter-spacing:3px;color:var(--accent);margin-bottom:4px}
+.uz-sub{font-size:9px;letter-spacing:2px;color:var(--muted)}
+#fileInput{position:absolute;inset:0;opacity:0;cursor:pointer}
+.preview-wrap{display:none}
+.preview-wrap.show{display:block}
+.preview-img{width:100%;border-radius:2px;border:1px solid var(--border);max-height:280px;object-fit:cover;display:block}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.field input{background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:12px 14px;color:var(--text);font-family:var(--font-m);font-size:13px;letter-spacing:1px;outline:none;transition:.2s}
+.field input:focus{border-color:var(--accent)}
+.upload-coords{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.coord-disp{background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
+.coord-disp .val{font-size:12px;letter-spacing:1px}
+.btn-upload{background:var(--accent);color:var(--bg);border:none;padding:16px;width:100%;font-family:var(--font-m);font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:.2s}
+.btn-upload:hover{background:#d4e800}
+.btn-upload:disabled{opacity:.35;cursor:not-allowed}
+.progress-bar{width:0%;height:3px;background:var(--accent);border-radius:2px;transition:width .3s;box-shadow:0 0 8px var(--accent)}
+.progress-wrap{background:var(--border);border-radius:2px;overflow:hidden;display:none}
+.progress-wrap.show{display:block}
+
+/* GALLERY */
+.gallery-wrap{padding:20px 18px 40px;max-width:900px;margin:0 auto}
+.gallery-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.gallery-title{font-family:var(--font-d);font-size:32px;letter-spacing:3px;color:var(--text)}
+.gallery-count{font-size:10px;letter-spacing:2px;color:var(--muted)}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.photo-card{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden;transition:.2s;cursor:pointer}
+.photo-card:hover{border-color:rgba(232,255,0,.4);transform:translateY(-2px)}
+.photo-img{width:100%;height:220px;object-fit:cover;display:block}
+.photo-info{padding:14px}
+.photo-nick{font-family:var(--font-d);font-size:20px;letter-spacing:2px;color:var(--accent);margin-bottom:6px}
+.photo-coords{display:flex;flex-direction:column;gap:3px}
+.photo-coord-row{font-size:9px;letter-spacing:1.5px;color:var(--muted)}
+.photo-coord-row span{color:var(--text);font-size:11px}
+.photo-date{font-size:8px;letter-spacing:1px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .ei{font-size:48px;margin-bottom:12px;display:block}
+.empty-state p{font-size:10px;letter-spacing:2px}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.lightbox.show{display:flex}
+.lb-img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:2px}
+.lb-info{margin-top:16px;text-align:center}
+.lb-nick{font-family:var(--font-d);font-size:28px;letter-spacing:3px;color:var(--accent)}
+.lb-coords{font-size:10px;letter-spacing:2px;color:var(--muted);margin-top:6px;line-height:2}
+.lb-close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;color:var(--muted);background:none;border:none;font-family:var(--font-m);transition:.2s}
+.lb-close:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div>
+    <span class="nav-title">19°E</span>
+    <span class="nav-sub">POŁUDNIK GALLERY</span>
+  </div>
+  <div class="tab-row">
+    <button class="tab active" onclick="showPage('meter',this)">MIERZ</button>
+    <button class="tab" onclick="showPage('upload',this)">DODAJ</button>
+    <button class="tab" onclick="showPage('gallery',this)">GALERIA</button>
+  </div>
+</nav>
+
+<!-- METER -->
+<div id="page-meter" class="page active">
+<div class="meter-wrap">
+  <div class="status-bar"><div class="dot" id="mDot"></div><span id="mStatus">Oczekiwanie na lokalizację…</span></div>
+  <div class="card">
+    <div class="lbl">Odległość od południka 19°E</div>
+    <div id="mWait" style="text-align:center;padding:32px 0;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:10px">📍</div>
+      <div style="font-size:9px;letter-spacing:2px">Naciśnij przycisk poniżej</div>
+    </div>
+    <div id="mData" style="display:none">
+      <div style="text-align:center;padding:12px 0">
+        <div class="dist-big" id="distVal">—</div>
+        <div class="dist-unit" id="distUnit">METRY</div>
+      </div>
+      <div class="compass-wrap">
+        <div class="compass">
+          <div class="c-ring"></div><div class="c-ring2"></div><div class="c-mline"></div>
+          <span class="card-n n">N</span><span class="card-n s">S</span>
+          <span class="card-n e">E</span><span class="card-n w">W</span>
+          <div class="needle-w" id="needleW">
+            <div class="needle"><div class="n-head"></div><div class="n-tail"></div><div class="n-dot"></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="dir-text" id="dirText">—</div>
+          <div class="dir-deg" id="dirDeg"></div>
+        </div>
+      </div>
+      <div class="coords-row">
+        <div class="coord-cell"><div class="lbl">Szerokość</div><div class="coord-val" id="mLat">—</div></div>
+        <div class="coord-cell"><div class="lbl">Długość</div><div class="coord-val" id="mLon">—</div></div>
+      </div>
+    </div>
+  </div>
+  <button class="btn" id="mBtn" onclick="getLoc()"><span>⊕ Pobierz lokalizację</span></button>
+  <div class="info-box"><strong>Południk 19°E</strong> przebiega m.in. przez <strong>Bydgoszcz, Łódź, Kraków</strong>.<br>Aby dodać zdjęcie, musisz być w odległości max <strong>50 m</strong> od południka.</div>
+</div>
+</div>
+
+<!-- UPLOAD -->
+<div id="page-upload" class="page">
+<div class="upload-wrap">
+  <div class="lock-banner" id="lockBanner">
+    <span>🔒</span>
+    <div>Najpierw pobierz lokalizację w zakładce <strong>MIERZ</strong>.<br>Wrzucanie zdjęć możliwe tylko w odległości max <strong>50 m</strong> od południka 19°E.</div>
+  </div>
+  <div id="uploadForm" style="display:none">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:16px">
+        <div class="lbl">Twoja pozycja</div>
+        <div class="upload-coords">
+          <div class="coord-disp"><div class="lbl">Południk</div><div class="val" id="uLon">—</div></div>
+          <div class="coord-disp"><div class="lbl">Równoleżnik</div><div class="val" id="uLat">—</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:9px;letter-spacing:1px;color:var(--accent)">✓ <span id="uDist">—</span> od południka — wrzucanie odblokowane</div>
+      </div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*" onchange="onFileChosen(this)">
+        <span class="uz-icon">📷</span>
+        <div class="uz-title">Wybierz zdjęcie</div>
+        <div class="uz-sub">lub przeciągnij tutaj</div>
+      </div>
+      <div class="preview-wrap" id="previewWrap"><img id="previewImg" class="preview-img" src="" alt="podgląd"></div>
+      <div class="field"><label>Twój nick</label><input type="text" id="nickInput" placeholder="np. Marek_Krakow" maxlength="30"></div>
+      <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+      <button class="btn-upload" id="uploadBtn" onclick="doUpload()" disabled>⬆ WYŚLIJ ZDJĘCIE</button>
+      <div id="uploadMsg" style="font-size:10px;letter-spacing:1px;text-align:center;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- GALLERY -->
+<div id="page-gallery" class="page">
+<div class="gallery-wrap">
+  <div class="gallery-header">
+    <div class="gallery-title">GALERIA</div>
+    <div class="gallery-count" id="galleryCount"></div>
+  </div>
+  <div class="gallery-grid" id="galleryGrid">
+    <div class="empty-state"><span class="ei">⏳</span><p>Ładowanie…</p></div>
+  </div>
+</div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLB()">
+  <button class="lb-close" onclick="closeLB()">✕</button>
+  <img class="lb-img" id="lbImg" src="" alt="">
+  <div class="lb-info">
+    <div class="lb-nick" id="lbNick"></div>
+    <div class="lb-coords" id="lbCoords"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, getDocs, orderBy, query }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+
+// ── FIREBASE CONFIG ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyAj4avUwFtfZLHJaFjNGKgYRCxi6TLy7mA",
+  authDomain:        "poludnik19-99049.firebaseapp.com",
+  projectId:         "poludnik19-99049",
+  storageBucket:     "poludnik19-99049.firebasestorage.app",
+  messagingSenderId: "881867844384",
+  appId:             "1:881867844384:web:32b3f3b71ccd03b5598545",
+  measurementId:     "G-K88YG9FWBX"
+};
+// ─────────────────────────────────────────────────────────
+
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const storage = getStorage(app);
+
+const MERIDIAN = 19.0;
+const MAX_DIST = 50;
+
+window._myLat   = null;
+window._myLon   = null;
+window._myDist  = null;
+window._chosenFile = null;
+
+// ── TABS ─────────────────────────────────────────────────
+window.showPage = function(p, btn) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  btn.classList.add('active');
+  if (p === 'gallery') loadGallery();
+  if (p === 'upload')  refreshUploadState();
+};
+
+// ── METER ─────────────────────────────────────────────────
+window.getLoc = function() {
+  const btn = document.getElementById('mBtn');
+  const dot = document.getElementById('mDot');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = '⟳ Pobieranie…';
+  dot.className = 'dot';
+  document.getElementById('mStatus').textContent = 'Pobieranie lokalizacji GPS…';
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const latRad = lat * Math.PI / 180;
+    const mPerDeg = 111320 * Math.cos(latRad);
+    const delta = lon - MERIDIAN;
+    const distM = Math.abs(delta) * mPerDeg;
+
+    window._myLat  = lat;
+    window._myLon  = lon;
+    window._myDist = distM;
+
+    let dv, du;
+    if (distM >= 1000) { dv = (distM / 1000).toFixed(2); du = 'KILOMETRY'; }
+    else               { dv = Math.round(distM).toString(); du = 'METRY'; }
+
+    document.getElementById('distVal').textContent = dv;
+    document.getElementById('distVal').className = 'dist-big' + (distM > 50000 ? ' far' : '');
+    document.getElementById('distUnit').textContent = du;
+    document.getElementById('mLat').textContent = lat.toFixed(5) + '°';
+    document.getElementById('mLon').textContent = lon.toFixed(5) + '°';
+
+    const dirEl = document.getElementById('dirText');
+    if (Math.abs(delta) < 0.0005) {
+      dirEl.textContent = 'NA POŁUDNIKU'; dirEl.className = 'dir-text ok';
+      document.getElementById('needleW').style.transform = 'rotate(0deg)';
+    } else {
+      const isEast = delta > 0;
+      dirEl.textContent = isEast ? 'ZACHÓD' : 'WSCHÓD';
+      dirEl.className = 'dir-text ' + (isEast ? 'w' : 'e');
+      document.getElementById('needleW').style.transform = `rotate(${isEast ? 270 : 90}deg)`;
+    }
+    document.getElementById('dirDeg').textContent = Math.abs(delta).toFixed(4) + '° od południka 19°E';
+    document.getElementById('mWait').style.display = 'none';
+    document.getElementById('mData').style.display  = 'block';
+    dot.className = 'dot on';
+    document.getElementById('mStatus').textContent = `Lokalizacja OK · ±${Math.round(pos.coords.accuracy)} m`;
+    btn.disabled = false;
+    btn.querySelector('span').textContent = '⟳ Odśwież';
+  }, err => {
+    const msgs = { 1: 'Brak zgody na lokalizację', 2: 'Lokalizacja niedostępna', 3: 'Timeout GPS' };
+    dot.className = 'dot err';
+    document.getElementById('mStatus').textContent = msgs[err.code] || 'Błąd GPS';
+    btn.disabled = false;
+    btn.querySelector('span').textContent = '⊕ Spróbuj ponownie';
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+};
+
+// ── UPLOAD STATE ─────────────────────────────────────────
+function refreshUploadState() {
+  const dist = window._myDist;
+  const lock = document.getElementById('lockBanner');
+  const form = document.getElementById('uploadForm');
+
+  if (dist === null) {
+    lock.style.display = 'flex'; lock.className = 'lock-banner'; form.style.display = 'none';
+    lock.innerHTML = `<span>🔒</span><div>Najpierw pobierz lokalizację w zakładce <strong>MIERZ</strong>.</div>`;
+    return;
+  }
+  if (dist > MAX_DIST) {
+    lock.style.display = 'flex'; lock.className = 'lock-banner'; form.style.display = 'none';
+    lock.innerHTML = `<span>🔒</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka. Max odległość: <strong>50 m</strong>.<br>Podejdź bliżej południka 19°E.</div>`;
+    return;
+  }
+  lock.style.display = 'flex'; lock.className = 'lock-banner unlocked'; form.style.display = 'block';
+  lock.innerHTML = `<span>✅</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka — wrzucanie odblokowane!</div>`;
+  document.getElementById('uLat').textContent = window._myLat.toFixed(5) + '°';
+  document.getElementById('uLon').textContent = '19.00000°';
+  document.getElementById('uDist').textContent = Math.round(dist) + ' m';
+}
+
+// ── FILE CHOSEN ──────────────────────────────────────────
+window.onFileChosen = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  window._chosenFile = file;
+  document.getElementById('previewImg').src = URL.createObjectURL(file);
+  document.getElementById('previewWrap').classList.add('show');
+  checkReady();
+};
+
+document.getElementById('nickInput').addEventListener('input', checkReady);
+
+function checkReady() {
+  const nick = document.getElementById('nickInput').value.trim();
+  document.getElementById('uploadBtn').disabled = !(window._chosenFile && nick.length > 0);
+}
+
+// ── UPLOAD ───────────────────────────────────────────────
+window.doUpload = async function() {
+  const nick = document.getElementById('nickInput').value.trim();
+  const file = window._chosenFile;
+  if (!file || !nick) return;
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; btn.textContent = '⬆ Wysyłanie…';
+  const pw = document.getElementById('progressWrap');
+  const pb = document.getElementById('progressBar');
+  pw.classList.add('show');
+  const msg = document.getElementById('uploadMsg');
+  msg.textContent = '';
+
+  try {
+    const storRef = ref(storage, `photos/${Date.now()}_${nick.replace(/\s/g,'_')}`);
+    const task = uploadBytesResumable(storRef, file);
+    task.on('state_changed', snap => {
+      pb.style.width = (snap.bytesTransferred / snap.totalBytes * 100) + '%';
+    });
+    await task;
+    const url = await getDownloadURL(storRef);
+    await addDoc(collection(db, 'photos'), {
+      nick, url,
+      lat: window._myLat, lon: window._myLon,
+      dist: Math.round(window._myDist),
+      ts: Date.now()
+    });
+    btn.textContent = '✓ WYSŁANO!';
+    msg.style.color = 'var(--accent)';
+    msg.textContent = 'Zdjęcie dodane do galerii!';
+    document.getElementById('previewWrap').classList.remove('show');
+    document.getElementById('nickInput').value = '';
+    window._chosenFile = null;
+    pb.style.width = '0%'; pw.classList.remove('show');
+    setTimeout(() => { btn.textContent = '⬆ WYŚLIJ ZDJĘCIE'; btn.disabled = true; }, 2500);
+  } catch (e) {
+    console.error(e);
+    msg.style.color = 'var(--accent2)';
+    msg.textContent = '❌ ' + e.message;
+    btn.disabled = false; btn.textContent = '⬆ WYŚLIJ ZDJĘCIE';
+  }
+};
+
+// ── GALLERY ──────────────────────────────────────────────
+async function loadGallery() {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = `<div class="empty-state"><span class="ei">⏳</span><p>Ładowanie…</p></div>`;
+  try {
+    const snap = await getDocs(query(collection(db, 'photos'), orderBy('ts', 'desc')));
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    document.getElementById('galleryCount').textContent = docs.length + ' zdjęć';
+    if (!docs.length) {
+      grid.innerHTML = `<div class="empty-state"><span class="ei">📷</span><p>Brak zdjęć — bądź pierwszy!</p></div>`;
+      return;
+    }
+    grid.innerHTML = docs.map(p => {
+      const date = new Date(p.ts).toLocaleDateString('pl-PL', { day:'2-digit', month:'long', year:'numeric' });
+      return `<div class="photo-card" onclick="openLB('${p.url}','${p.nick}',${p.lat},${p.lon},${p.dist})">
+        <img class="photo-img" src="${p.url}" alt="${p.nick}" loading="lazy">
+        <div class="photo-info">
+          <div class="photo-nick">${p.nick}</div>
+          <div class="photo-coords">
+            <div class="photo-coord-row">Południk: <span>19°00'00" E</span></div>
+            <div class="photo-coord-row">Równoleżnik: <span>${formatLat(p.lat)}</span></div>
+            <div class="photo-coord-row">Odległość: <span>${p.dist} m od południka</span></div>
+          </div>
+          <div class="photo-date">${date}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state"><span class="ei">❌</span><p>${e.message}</p></div>`;
+  }
+}
+
+function formatLat(lat) {
+  const d = Math.floor(Math.abs(lat));
+  const mAll = (Math.abs(lat) - d) * 60;
+  const m = Math.floor(mAll);
+  const s = Math.round((mAll - m) * 60);
+  return `${d}°${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}" ${lat >= 0 ? 'N' : 'S'}`;
+}
+
+// ── LIGHTBOX ─────────────────────────────────────────────
+window.openLB = function(url, nick, lat, lon, dist) {
+  document.getElementById('lbImg').src = url;
+  document.getElementById('lbNick').textContent = nick;
+  document.getElementById('lbCoords').innerHTML =
+    `Południk: 19°00'00" E<br>Równoleżnik: ${formatLat(lat)}<br>Odległość od południka: ${dist} m`;
+  document.getElementById('lightbox').classList.add('show');
+};
+window.closeLB = function() { document.getElementById('lightbox').classList.remove('show'); };
+
+// ── DRAG & DROP ───────────────────────────────────────────
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) {
+    window._chosenFile = f;
+    document.getElementById('previewImg').src = URL.createObjectURL(f);
+    document.getElementById('previewWrap').classList.add('show');
+    checkReady();
+  }
+});
+
+// Wczytaj galerię od razu
+loadGallery();
+</script>
+</body>
+</html>
