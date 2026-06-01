@@ -115,6 +115,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 .photo-coord-row{font-size:9px;letter-spacing:1.5px;color:var(--muted)}
 .photo-coord-row span{color:var(--text);font-size:11px}
 .photo-date{font-size:8px;letter-spacing:1px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.photo-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.btn-delete{background:transparent;border:1px solid rgba(255,64,96,.3);color:var(--accent2);font-family:var(--font-m);font-size:8px;letter-spacing:1.5px;padding:5px 10px;cursor:pointer;border-radius:2px;transition:.2s;text-transform:uppercase}
+.btn-delete:hover{background:rgba(255,64,96,.12);border-color:var(--accent2)}
 .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty-state .ei{font-size:48px;margin-bottom:12px;display:block}
 .empty-state p{font-size:10px;letter-spacing:2px}
@@ -211,7 +214,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
     </div>
   </div>
   <button class="btn" id="mBtn" onclick="getLoc()"><span>⊕ Pobierz lokalizację</span></button>
-  <div class="info-box"><strong>Południk 19°E 2026</strong> Marek Kruczalok zaprasza do zabawy zdobywania południka 19.<br>Aby dodać zdjęcie, musisz być w odległości max <strong>50 m</strong> od południka.</div>
+  <div class="info-box"><strong>Południk 19°E</strong> przebiega m.in. przez <strong>Bydgoszcz, Łódź, Kraków</strong>.<br>Aby dodać zdjęcie, musisz być w odległości max <strong>50 m</strong> od południka.</div>
 </div>
 </div>
 
@@ -292,7 +295,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, orderBy, query }
+import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── CONFIG ───────────────────────────────────────────────
@@ -308,6 +311,7 @@ const CLOUDINARY_CLOUD  = 'dmn4q8cjk';
 const CLOUDINARY_PRESET = 'szpjhhmc';
 const MERIDIAN = 19.0;
 const MAX_DIST = 50;
+const ADMIN_PASS = 'AdministratorMarek123';
 // ─────────────────────────────────────────────────────────
 
 const fbApp = initializeApp(FIREBASE);
@@ -513,8 +517,8 @@ async function loadGallery() {
     grid.innerHTML = docs.map(p=>{
       const date = new Date(p.ts).toLocaleDateString('pl-PL',{day:'2-digit',month:'long',year:'numeric'});
       const thumb = p.url.replace('/upload/','/upload/w_600,q_auto,f_auto/');
-      return `<div class="photo-card" onclick="openLB('${p.url}','${p.nick}',${p.lat},${p.lon},${p.dist})">
-        <img class="photo-img" src="${thumb}" alt="${p.nick}" loading="lazy">
+      return `<div class="photo-card" id="card-${p.id}">
+        <img class="photo-img" src="${thumb}" alt="${p.nick}" loading="lazy" onclick="openLB('${p.url}','${p.nick}',${p.lat},${p.lon},${p.dist})" style="cursor:pointer">
         <div class="photo-info">
           <div class="photo-nick">${p.nick}</div>
           <div class="photo-coords">
@@ -522,7 +526,10 @@ async function loadGallery() {
             <div class="photo-coord-row">Równoleżnik: <span>${formatLat(p.lat)}</span></div>
             <div class="photo-coord-row">Odległość: <span>${p.dist} m od południka</span></div>
           </div>
-          <div class="photo-date">${date}</div>
+          <div class="photo-footer">
+            <div class="photo-date">${date}</div>
+            <button class="btn-delete" onclick="deletePhoto('${p.id}')">🗑 usuń</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -650,6 +657,38 @@ async function initMap() {
     console.error(e);
   }
 }
+
+// ── DELETE ───────────────────────────────────────────────
+window.deletePhoto = async function(photoId) {
+  const pass = prompt('Podaj hasło administratora:');
+  if (pass === null) return; // anulowano
+  if (pass !== ADMIN_PASS) {
+    alert('❌ Błędne hasło.');
+    return;
+  }
+  if (!confirm('Na pewno usunąć to zdjęcie? Operacja jest nieodwracalna.')) return;
+
+  try {
+    await deleteDoc(doc(db, 'photos', photoId));
+    // Usuń z cache i odśwież galerię
+    window._allPhotos = window._allPhotos.filter(p => p.id !== photoId);
+    mapInitialized = false;
+    // Animowane usunięcie karty
+    const card = document.getElementById('card-' + photoId);
+    if (card) {
+      card.style.transition = 'opacity .3s, transform .3s';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(.95)';
+      setTimeout(() => {
+        card.remove();
+        const remaining = document.querySelectorAll('.photo-card').length;
+        document.getElementById('galleryCount').textContent = remaining + ' zdjęć';
+      }, 300);
+    }
+  } catch(e) {
+    alert('❌ Błąd usuwania: ' + e.message);
+  }
+};
 
 // ── HELPERS ──────────────────────────────────────────────
 function formatLat(lat) {
