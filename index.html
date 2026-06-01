@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Południk 19° — Galeria</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -16,11 +18,11 @@
 body{background:var(--bg);color:var(--text);font-family:var(--font-m);min-height:100dvh;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,255,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(232,255,0,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
 
-nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
-.nav-title{font-family:var(--font-d);font-size:28px;letter-spacing:3px;color:var(--accent)}
-.nav-sub{font-size:8px;letter-spacing:2px;color:var(--muted);display:block;margin-top:-2px}
-.tab-row{display:flex;gap:4px}
-.tab{padding:7px 14px;font-family:var(--font-m);font-size:9px;letter-spacing:2px;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:2px;transition:.2s}
+nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.nav-title{font-family:var(--font-d);font-size:26px;letter-spacing:3px;color:var(--accent)}
+.nav-sub{font-size:7px;letter-spacing:2px;color:var(--muted);display:block;margin-top:-2px}
+.tab-row{display:flex;gap:3px}
+.tab{padding:6px 10px;font-family:var(--font-m);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:2px;transition:.2s}
 .tab.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,.06)}
 
 .page{display:none;position:relative;z-index:1}
@@ -89,13 +91,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 .field input:focus{border-color:var(--accent)}
 .upload-coords{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .coord-disp{background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
-.coord-disp .val{font-size:12px;letter-spacing:1px}
+.coord-disp .val{font-size:12px;letter-spacing:1px;margin-top:2px}
 .btn-upload{background:var(--accent);color:var(--bg);border:none;padding:16px;width:100%;font-family:var(--font-m);font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:.2s}
 .btn-upload:hover{background:#d4e800}
 .btn-upload:disabled{opacity:.35;cursor:not-allowed}
-.progress-bar{width:0%;height:3px;background:var(--accent);border-radius:2px;transition:width .3s;box-shadow:0 0 8px var(--accent)}
-.progress-wrap{background:var(--border);border-radius:2px;overflow:hidden;display:none}
+.progress-wrap{background:var(--border);border-radius:2px;overflow:hidden;display:none;margin-top:4px}
 .progress-wrap.show{display:block}
+.progress-bar{width:0%;height:3px;background:var(--accent);border-radius:2px;transition:width .2s;box-shadow:0 0 8px var(--accent)}
+.progress-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-align:center;margin-top:6px}
 
 /* GALLERY */
 .gallery-wrap{padding:20px 18px 40px;max-width:900px;margin:0 auto}
@@ -105,7 +108,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 .photo-card{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden;transition:.2s;cursor:pointer}
 .photo-card:hover{border-color:rgba(232,255,0,.4);transform:translateY(-2px)}
-.photo-img{width:100%;height:220px;object-fit:cover;display:block}
+.photo-img{width:100%;height:220px;object-fit:cover;display:block;background:var(--surface)}
 .photo-info{padding:14px}
 .photo-nick{font-family:var(--font-d);font-size:20px;letter-spacing:2px;color:var(--accent);margin-bottom:6px}
 .photo-coords{display:flex;flex-direction:column;gap:3px}
@@ -116,13 +119,43 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 .empty-state .ei{font-size:48px;margin-bottom:12px;display:block}
 .empty-state p{font-size:10px;letter-spacing:2px}
 
+/* MAP */
+.map-wrap{padding:0;position:relative;z-index:1}
+.map-header{padding:16px 18px 12px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border)}
+.map-title{font-family:var(--font-d);font-size:28px;letter-spacing:3px;color:var(--text)}
+.map-stats{display:flex;gap:16px}
+.map-stat{text-align:right}
+.map-stat-val{font-family:var(--font-d);font-size:20px;color:var(--accent);line-height:1}
+.map-stat-lbl{font-size:7px;letter-spacing:2px;color:var(--muted)}
+#map{width:100%;height:calc(100dvh - 110px);background:var(--bg)}
+
+/* Leaflet dark overrides */
+.leaflet-container{background:#07080d!important;font-family:var(--font-m)}
+.leaflet-tile-pane{filter:brightness(.75) saturate(.4) hue-rotate(180deg) invert(1)}
+.leaflet-control-zoom a{background:var(--card)!important;color:var(--accent)!important;border-color:var(--border)!important}
+.leaflet-control-zoom a:hover{background:var(--surface)!important}
+.leaflet-control-attribution{background:rgba(7,8,13,.7)!important;color:var(--muted)!important;font-size:8px!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.leaflet-popup-content-wrapper{background:var(--card)!important;border:1px solid var(--border)!important;border-radius:2px!important;box-shadow:0 4px 24px rgba(0,0,0,.6)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important;width:auto!important}
+.leaflet-popup-tip{background:var(--card)!important}
+.leaflet-popup-close-button{color:var(--muted)!important;right:8px!important;top:6px!important;font-size:16px!important}
+.leaflet-popup-close-button:hover{color:var(--text)!important}
+
+.map-popup{padding:14px 16px;min-width:180px}
+.map-popup-img{width:100%;height:120px;object-fit:cover;display:block;margin-bottom:10px;border-radius:1px}
+.map-popup-nick{font-family:var(--font-d);font-size:18px;letter-spacing:2px;color:var(--accent);margin-bottom:4px}
+.map-popup-row{font-size:8px;letter-spacing:1.5px;color:var(--muted);line-height:1.9}
+.map-popup-row span{color:var(--text)}
+.map-popup-date{font-size:7px;letter-spacing:1px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+
 /* LIGHTBOX */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .lightbox.show{display:flex}
-.lb-img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:2px}
+.lb-img{max-width:100%;max-height:62vh;object-fit:contain;border-radius:2px}
 .lb-info{margin-top:16px;text-align:center}
 .lb-nick{font-family:var(--font-d);font-size:28px;letter-spacing:3px;color:var(--accent)}
-.lb-coords{font-size:10px;letter-spacing:2px;color:var(--muted);margin-top:6px;line-height:2}
+.lb-coords{font-size:10px;letter-spacing:2px;color:var(--muted);margin-top:6px;line-height:2.2}
 .lb-close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;color:var(--muted);background:none;border:none;font-family:var(--font-m);transition:.2s}
 .lb-close:hover{color:var(--text)}
 </style>
@@ -138,6 +171,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
     <button class="tab active" onclick="showPage('meter',this)">MIERZ</button>
     <button class="tab" onclick="showPage('upload',this)">DODAJ</button>
     <button class="tab" onclick="showPage('gallery',this)">GALERIA</button>
+    <button class="tab" onclick="showPage('map',this)">MAPA</button>
   </div>
 </nav>
 
@@ -199,16 +233,17 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
         <div style="margin-top:10px;font-size:9px;letter-spacing:1px;color:var(--accent)">✓ <span id="uDist">—</span> od południka — wrzucanie odblokowane</div>
       </div>
       <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/*" onchange="onFileChosen(this)">
+        <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="onFileChosen(this)">
         <span class="uz-icon">📷</span>
         <div class="uz-title">Wybierz zdjęcie</div>
-        <div class="uz-sub">lub przeciągnij tutaj</div>
+        <div class="uz-sub">aparat lub galeria</div>
       </div>
       <div class="preview-wrap" id="previewWrap"><img id="previewImg" class="preview-img" src="" alt="podgląd"></div>
       <div class="field"><label>Twój nick</label><input type="text" id="nickInput" placeholder="np. Marek_Krakow" maxlength="30"></div>
       <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-label" id="progressLabel"></div>
       <button class="btn-upload" id="uploadBtn" onclick="doUpload()" disabled>⬆ WYŚLIJ ZDJĘCIE</button>
-      <div id="uploadMsg" style="font-size:10px;letter-spacing:1px;text-align:center;color:var(--muted)"></div>
+      <div id="uploadMsg" style="font-size:10px;letter-spacing:1px;text-align:center;min-height:16px"></div>
     </div>
   </div>
 </div>
@@ -227,6 +262,24 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 </div>
 </div>
 
+<!-- MAP -->
+<div id="page-map" class="page">
+  <div class="map-header">
+    <div class="map-title">MAPA POŁUDNIKA</div>
+    <div class="map-stats">
+      <div class="map-stat">
+        <div class="map-stat-val" id="mapCount">—</div>
+        <div class="map-stat-lbl">PUNKTÓW</div>
+      </div>
+      <div class="map-stat">
+        <div class="map-stat-val" id="mapKm">—</div>
+        <div class="map-stat-lbl">KM POKRYTE</div>
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLB()">
   <button class="lb-close" onclick="closeLB()">✕</button>
@@ -241,32 +294,33 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,8,13,.92);backdrop-filte
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, getDocs, orderBy, query }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL }
-  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
-// ── FIREBASE CONFIG ──────────────────────────────────────
-const firebaseConfig = {
+// ── CONFIG ───────────────────────────────────────────────
+const FIREBASE = {
   apiKey:            "AIzaSyAj4avUwFtfZLHJaFjNGKgYRCxi6TLy7mA",
   authDomain:        "poludnik19-99049.firebaseapp.com",
   projectId:         "poludnik19-99049",
   storageBucket:     "poludnik19-99049.firebasestorage.app",
   messagingSenderId: "881867844384",
-  appId:             "1:881867844384:web:32b3f3b71ccd03b5598545",
-  measurementId:     "G-K88YG9FWBX"
+  appId:             "1:881867844384:web:32b3f3b71ccd03b5598545"
 };
+const CLOUDINARY_CLOUD  = 'dmn4q8cjk';
+const CLOUDINARY_PRESET = 'szpjhhmc';
+const MERIDIAN = 19.0;
+const MAX_DIST = 50;
 // ─────────────────────────────────────────────────────────
 
-const app  = initializeApp(firebaseConfig);
-const db   = getFirestore(app);
-const storage = getStorage(app);
+const fbApp = initializeApp(FIREBASE);
+const db    = getFirestore(fbApp);
 
-const MERIDIAN = 19.0;
-const MAX_DIST = 50000;
-
-window._myLat   = null;
-window._myLon   = null;
-window._myDist  = null;
+window._myLat = null;
+window._myLon = null;
+window._myDist = null;
 window._chosenFile = null;
+window._allPhotos = [];
+
+let leafletMap = null;
+let mapInitialized = false;
 
 // ── TABS ─────────────────────────────────────────────────
 window.showPage = function(p, btn) {
@@ -276,6 +330,7 @@ window.showPage = function(p, btn) {
   btn.classList.add('active');
   if (p === 'gallery') loadGallery();
   if (p === 'upload')  refreshUploadState();
+  if (p === 'map')     initMap();
 };
 
 // ── METER ─────────────────────────────────────────────────
@@ -327,7 +382,7 @@ window.getLoc = function() {
     btn.disabled = false;
     btn.querySelector('span').textContent = '⟳ Odśwież';
   }, err => {
-    const msgs = { 1: 'Brak zgody na lokalizację', 2: 'Lokalizacja niedostępna', 3: 'Timeout GPS' };
+    const msgs = {1:'Brak zgody na lokalizację',2:'Lokalizacja niedostępna',3:'Timeout GPS'};
     dot.className = 'dot err';
     document.getElementById('mStatus').textContent = msgs[err.code] || 'Błąd GPS';
     btn.disabled = false;
@@ -340,25 +395,24 @@ function refreshUploadState() {
   const dist = window._myDist;
   const lock = document.getElementById('lockBanner');
   const form = document.getElementById('uploadForm');
-
   if (dist === null) {
-    lock.style.display = 'flex'; lock.className = 'lock-banner'; form.style.display = 'none';
-    lock.innerHTML = `<span>🔒</span><div>Najpierw pobierz lokalizację w zakładce <strong>MIERZ</strong>.</div>`;
+    lock.style.display='flex'; lock.className='lock-banner'; form.style.display='none';
+    lock.innerHTML=`<span>🔒</span><div>Najpierw pobierz lokalizację w zakładce <strong>MIERZ</strong>.</div>`;
     return;
   }
   if (dist > MAX_DIST) {
-    lock.style.display = 'flex'; lock.className = 'lock-banner'; form.style.display = 'none';
-    lock.innerHTML = `<span>🔒</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka. Max odległość: <strong>50 m</strong>.<br>Podejdź bliżej południka 19°E.</div>`;
+    lock.style.display='flex'; lock.className='lock-banner'; form.style.display='none';
+    lock.innerHTML=`<span>🔒</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka. Maksimum: <strong>50 m</strong>.<br>Podejdź bliżej południka 19°E.</div>`;
     return;
   }
-  lock.style.display = 'flex'; lock.className = 'lock-banner unlocked'; form.style.display = 'block';
-  lock.innerHTML = `<span>✅</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka — wrzucanie odblokowane!</div>`;
-  document.getElementById('uLat').textContent = window._myLat.toFixed(5) + '°';
+  lock.style.display='flex'; lock.className='lock-banner unlocked'; form.style.display='block';
+  lock.innerHTML=`<span>✅</span><div>Jesteś <strong>${Math.round(dist)} m</strong> od południka — wrzucanie odblokowane!</div>`;
+  document.getElementById('uLat').textContent = window._myLat.toFixed(5)+'°';
   document.getElementById('uLon').textContent = '19.00000°';
-  document.getElementById('uDist').textContent = Math.round(dist) + ' m';
+  document.getElementById('uDist').textContent = Math.round(dist)+' m';
 }
 
-// ── FILE CHOSEN ──────────────────────────────────────────
+// ── FILE ─────────────────────────────────────────────────
 window.onFileChosen = function(input) {
   const file = input.files[0];
   if (!file) return;
@@ -367,9 +421,7 @@ window.onFileChosen = function(input) {
   document.getElementById('previewWrap').classList.add('show');
   checkReady();
 };
-
 document.getElementById('nickInput').addEventListener('input', checkReady);
-
 function checkReady() {
   const nick = document.getElementById('nickInput').value.trim();
   document.getElementById('uploadBtn').disabled = !(window._chosenFile && nick.length > 0);
@@ -380,61 +432,89 @@ window.doUpload = async function() {
   const nick = document.getElementById('nickInput').value.trim();
   const file = window._chosenFile;
   if (!file || !nick) return;
-
-  const btn = document.getElementById('uploadBtn');
-  btn.disabled = true; btn.textContent = '⬆ Wysyłanie…';
-  const pw = document.getElementById('progressWrap');
-  const pb = document.getElementById('progressBar');
-  pw.classList.add('show');
-  const msg = document.getElementById('uploadMsg');
-  msg.textContent = '';
+  const btn=document.getElementById('uploadBtn');
+  const pw=document.getElementById('progressWrap');
+  const pb=document.getElementById('progressBar');
+  const pl=document.getElementById('progressLabel');
+  const msgEl=document.getElementById('uploadMsg');
+  btn.disabled=true; btn.textContent='⬆ Wysyłanie…';
+  pw.classList.add('show'); pb.style.width='0%';
+  pl.textContent='Przesyłanie zdjęcia…'; msgEl.textContent='';
 
   try {
-    const storRef = ref(storage, `photos/${Date.now()}_${nick.replace(/\s/g,'_')}`);
-    const task = uploadBytesResumable(storRef, file);
-    task.on('state_changed', snap => {
-      pb.style.width = (snap.bytesTransferred / snap.totalBytes * 100) + '%';
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    formData.append('folder', 'poludnik19');
+
+    const imageUrl = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`);
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          const pct = Math.round(e.loaded/e.total*100);
+          pb.style.width = pct+'%';
+          pl.textContent = `Przesyłanie… ${pct}%`;
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status===200) resolve(JSON.parse(xhr.responseText).secure_url);
+        else reject(new Error('Cloudinary: '+xhr.status));
+      };
+      xhr.onerror = () => reject(new Error('Błąd sieci'));
+      xhr.send(formData);
     });
-    await task;
-    const url = await getDownloadURL(storRef);
-    await addDoc(collection(db, 'photos'), {
-      nick, url,
-      lat: window._myLat, lon: window._myLon,
-      dist: Math.round(window._myDist),
-      ts: Date.now()
+
+    pb.style.width='100%'; pl.textContent='Zapisywanie…';
+    await addDoc(collection(db,'photos'),{
+      nick, url:imageUrl,
+      lat:window._myLat, lon:window._myLon,
+      dist:Math.round(window._myDist),
+      ts:Date.now()
     });
-    btn.textContent = '✓ WYSŁANO!';
-    msg.style.color = 'var(--accent)';
-    msg.textContent = 'Zdjęcie dodane do galerii!';
+
+    btn.textContent='✓ WYSŁANO!';
+    pl.textContent='';
+    msgEl.style.color='var(--accent)';
+    msgEl.textContent='✓ Zdjęcie dodane do galerii!';
     document.getElementById('previewWrap').classList.remove('show');
-    document.getElementById('nickInput').value = '';
-    window._chosenFile = null;
-    pb.style.width = '0%'; pw.classList.remove('show');
-    setTimeout(() => { btn.textContent = '⬆ WYŚLIJ ZDJĘCIE'; btn.disabled = true; }, 2500);
-  } catch (e) {
-    console.error(e);
-    msg.style.color = 'var(--accent2)';
-    msg.textContent = '❌ ' + e.message;
-    btn.disabled = false; btn.textContent = '⬆ WYŚLIJ ZDJĘCIE';
+    document.getElementById('nickInput').value='';
+    window._chosenFile=null;
+    window._allPhotos=[];// wymuś reload galerii i mapy
+    mapInitialized=false;
+
+    setTimeout(()=>{pb.style.width='0%';pw.classList.remove('show');btn.textContent='⬆ WYŚLIJ ZDJĘCIE';btn.disabled=true;msgEl.textContent='';},3000);
+  } catch(e) {
+    pl.textContent=''; pw.classList.remove('show');
+    msgEl.style.color='var(--accent2)'; msgEl.textContent='❌ '+e.message;
+    btn.disabled=false; btn.textContent='⬆ WYŚLIJ ZDJĘCIE';
   }
 };
+
+// ── LOAD DATA ────────────────────────────────────────────
+async function fetchPhotos() {
+  if (window._allPhotos.length > 0) return window._allPhotos;
+  const snap = await getDocs(query(collection(db,'photos'), orderBy('ts','desc')));
+  window._allPhotos = snap.docs.map(d=>({id:d.id,...d.data()}));
+  return window._allPhotos;
+}
 
 // ── GALLERY ──────────────────────────────────────────────
 async function loadGallery() {
   const grid = document.getElementById('galleryGrid');
-  grid.innerHTML = `<div class="empty-state"><span class="ei">⏳</span><p>Ładowanie…</p></div>`;
+  grid.innerHTML=`<div class="empty-state"><span class="ei">⏳</span><p>Ładowanie…</p></div>`;
   try {
-    const snap = await getDocs(query(collection(db, 'photos'), orderBy('ts', 'desc')));
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    document.getElementById('galleryCount').textContent = docs.length + ' zdjęć';
+    const docs = await fetchPhotos();
+    document.getElementById('galleryCount').textContent = docs.length+' zdjęć';
     if (!docs.length) {
-      grid.innerHTML = `<div class="empty-state"><span class="ei">📷</span><p>Brak zdjęć — bądź pierwszy!</p></div>`;
+      grid.innerHTML=`<div class="empty-state"><span class="ei">📷</span><p>Brak zdjęć — bądź pierwszy!</p></div>`;
       return;
     }
-    grid.innerHTML = docs.map(p => {
-      const date = new Date(p.ts).toLocaleDateString('pl-PL', { day:'2-digit', month:'long', year:'numeric' });
+    grid.innerHTML = docs.map(p=>{
+      const date = new Date(p.ts).toLocaleDateString('pl-PL',{day:'2-digit',month:'long',year:'numeric'});
+      const thumb = p.url.replace('/upload/','/upload/w_600,q_auto,f_auto/');
       return `<div class="photo-card" onclick="openLB('${p.url}','${p.nick}',${p.lat},${p.lon},${p.dist})">
-        <img class="photo-img" src="${p.url}" alt="${p.nick}" loading="lazy">
+        <img class="photo-img" src="${thumb}" alt="${p.nick}" loading="lazy">
         <div class="photo-info">
           <div class="photo-nick">${p.nick}</div>
           <div class="photo-coords">
@@ -446,24 +526,144 @@ async function loadGallery() {
         </div>
       </div>`;
     }).join('');
-  } catch (e) {
-    grid.innerHTML = `<div class="empty-state"><span class="ei">❌</span><p>${e.message}</p></div>`;
+  } catch(e) {
+    grid.innerHTML=`<div class="empty-state"><span class="ei">❌</span><p>${e.message}</p></div>`;
   }
 }
 
-function formatLat(lat) {
-  const d = Math.floor(Math.abs(lat));
-  const mAll = (Math.abs(lat) - d) * 60;
-  const m = Math.floor(mAll);
-  const s = Math.round((mAll - m) * 60);
-  return `${d}°${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}" ${lat >= 0 ? 'N' : 'S'}`;
+// ── MAP ──────────────────────────────────────────────────
+async function initMap() {
+  // Inicjalizuj Leaflet tylko raz
+  if (!leafletMap) {
+    leafletMap = L.map('map', {
+      center: [52.0, 19.0],
+      zoom: 6,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
+    }).addTo(leafletMap);
+
+    // Stała linia południka 19°E — cała długość Polski i okolic
+    const meridianLine = L.polyline(
+      [[72, 19.0], [49, 19.0]],
+      {
+        color: '#e8ff00',
+        weight: 2,
+        opacity: 0.35,
+        dashArray: '8 6'
+      }
+    ).addTo(leafletMap);
+  }
+
+  // Zawsze odśwież punkty
+  try {
+    const docs = await fetchPhotos();
+
+    // Usuń stare markery (zachowaj warstwę linii)
+    leafletMap.eachLayer(layer => {
+      if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+        leafletMap.removeLayer(layer);
+      }
+    });
+
+    document.getElementById('mapCount').textContent = docs.length;
+
+    if (!docs.length) {
+      document.getElementById('mapKm').textContent = '0';
+      return;
+    }
+
+    // Posortuj po szerokości geograficznej (N→S) do rysowania linii
+    const sorted = [...docs].sort((a,b) => b.lat - a.lat);
+
+    // Linia łącząca punkty użytkowników wzdłuż południka
+    const userLine = L.polyline(
+      sorted.map(p => [p.lat, 19.0]),
+      {
+        color: '#ff4060',
+        weight: 3,
+        opacity: 0.8,
+        lineJoin: 'round'
+      }
+    ).addTo(leafletMap);
+
+    // Oblicz pokryte kilometry
+    if (sorted.length >= 2) {
+      const latMax = sorted[0].lat;
+      const latMin = sorted[sorted.length-1].lat;
+      const km = Math.round((latMax - latMin) * 111.32);
+      document.getElementById('mapKm').textContent = km;
+    } else {
+      document.getElementById('mapKm').textContent = '< 1';
+    }
+
+    // Custom ikona markera
+    const markerIcon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:14px;height:14px;border-radius:50%;
+        background:#e8ff00;
+        border:2px solid #07080d;
+        box-shadow:0 0 8px #e8ff00,0 0 0 3px rgba(232,255,0,.2);
+      "></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -10]
+    });
+
+    // Dodaj markery
+    docs.forEach(p => {
+      const thumb = p.url.replace('/upload/','/upload/w_300,h_200,c_fill,q_auto,f_auto/');
+      const date  = new Date(p.ts).toLocaleDateString('pl-PL',{day:'2-digit',month:'short',year:'numeric'});
+
+      const popupHtml = `<div class="map-popup">
+        <img class="map-popup-img" src="${thumb}" alt="${p.nick}" loading="lazy">
+        <div class="map-popup-nick">${p.nick}</div>
+        <div class="map-popup-row">Południk: <span>19°00'00" E</span></div>
+        <div class="map-popup-row">Równoleżnik: <span>${formatLat(p.lat)}</span></div>
+        <div class="map-popup-row">Odległość: <span>${p.dist} m</span></div>
+        <div class="map-popup-date">${date}</div>
+      </div>`;
+
+      L.marker([p.lat, 19.0], { icon: markerIcon })
+        .bindPopup(popupHtml, { maxWidth: 220, minWidth: 200 })
+        .addTo(leafletMap);
+    });
+
+    // Dopasuj widok do wszystkich punktów
+    if (docs.length === 1) {
+      leafletMap.setView([docs[0].lat, 19.0], 10);
+    } else {
+      const lats = docs.map(p => p.lat);
+      const minLat = Math.min(...lats) - 0.5;
+      const maxLat = Math.max(...lats) + 0.5;
+      leafletMap.fitBounds([[minLat, 18.5],[maxLat, 19.5]]);
+    }
+
+    // Wymuś przerysowanie po przełączeniu taba
+    setTimeout(() => leafletMap.invalidateSize(), 100);
+
+  } catch(e) {
+    console.error(e);
+  }
 }
 
-// ── LIGHTBOX ─────────────────────────────────────────────
-window.openLB = function(url, nick, lat, lon, dist) {
-  document.getElementById('lbImg').src = url;
-  document.getElementById('lbNick').textContent = nick;
-  document.getElementById('lbCoords').innerHTML =
+// ── HELPERS ──────────────────────────────────────────────
+function formatLat(lat) {
+  const d = Math.floor(Math.abs(lat));
+  const mAll = (Math.abs(lat)-d)*60;
+  const m = Math.floor(mAll);
+  const s = Math.round((mAll-m)*60);
+  return `${d}°${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}" ${lat>=0?'N':'S'}`;
+}
+
+window.openLB = function(url,nick,lat,lon,dist) {
+  document.getElementById('lbImg').src=url;
+  document.getElementById('lbNick').textContent=nick;
+  document.getElementById('lbCoords').innerHTML=
     `Południk: 19°00'00" E<br>Równoleżnik: ${formatLat(lat)}<br>Odległość od południka: ${dist} m`;
   document.getElementById('lightbox').classList.add('show');
 };
@@ -471,21 +671,21 @@ window.closeLB = function() { document.getElementById('lightbox').classList.remo
 
 // ── DRAG & DROP ───────────────────────────────────────────
 const uz = document.getElementById('uploadZone');
-uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
-uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
-uz.addEventListener('drop', e => {
+uz.addEventListener('dragover', e=>{e.preventDefault();uz.classList.add('drag');});
+uz.addEventListener('dragleave', ()=>uz.classList.remove('drag'));
+uz.addEventListener('drop', e=>{
   e.preventDefault(); uz.classList.remove('drag');
-  const f = e.dataTransfer.files[0];
-  if (f && f.type.startsWith('image/')) {
-    window._chosenFile = f;
-    document.getElementById('previewImg').src = URL.createObjectURL(f);
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')){
+    window._chosenFile=f;
+    document.getElementById('previewImg').src=URL.createObjectURL(f);
     document.getElementById('previewWrap').classList.add('show');
     checkReady();
   }
 });
 
-// Wczytaj galerię od razu
-loadGallery();
+// Start
+fetchPhotos();
 </script>
 </body>
 </html>
